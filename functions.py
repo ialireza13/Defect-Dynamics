@@ -75,6 +75,18 @@ def funcB(sigma, z, L, a):
             B[i,j] = sigma[i]*sigma[j] * np.log(L/np.abs(z[i]-z[j]))
     return B
 
+def random_defects(N, L):
+    def_loc = np.random.random((N,2)) * L
+    def_sigma = np.zeros(N)
+    def_sigma[::2] = 0.5
+    def_sigma[1::2]= -0.5
+    return def_loc, def_sigma
+
+def dislocate(def_loc, delta, pos):
+    dislocation = (np.random.random()-0.5) * 2.0*delta
+    def_loc[pos[0], pos[1]] += dislocation
+    return def_loc
+
 def get_trajectory(defects_loc, defects_charge, L, a, alpha, tMax, dt=0.01):
 
     times = np.arange(start=0, step=dt, stop=tMax)
@@ -172,4 +184,4 @@ def get_fixedpoint(defects_loc, defects_charge, L, a, alpha, dt=0.01):
     X[:] = np.real(z[:])
     Y[:] = -np.imag(z[:])
     
-    return X, Y
+    return np.dstack([X,Y])[0]
