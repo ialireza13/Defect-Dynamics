@@ -84,8 +84,7 @@ def random_defects(N, L):
 
 def dislocate(def_loc, delta, pos):
     dislocation = (np.random.random()-0.5) * 2.0*delta
-    def_loc[pos[0], pos[1]] += dislocation
-    return def_loc
+    return def_loc[pos[0], pos[1]] + dislocation
 
 def get_trajectory(defects_loc, defects_charge, L, a, alpha, tMax, dt=0.01):
 
