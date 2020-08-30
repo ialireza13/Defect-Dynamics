@@ -5,25 +5,20 @@ def funcC(sigma, z):
     C = np.zeros(len(z), dtype='complex128')
     for i in range(len(C)):
         for k in range(len(C)):
-            if i==k:
-                continue
-            C[i]+= sigma[i]*sigma[k] / (np.conj(z[i]) - np.conj(z[k]))
+            if i!=k:
+                C[i]+= sigma[i]*sigma[k] / (np.conj(z[i]) - np.conj(z[k]))
+    # z_ = np.conj(z)
+    # C = np.outer(sigma,sigma)/(np.outer(z_,np.ones(z_.shape)) - np.outer(np.ones(z_.shape),z_))
+    # np.fill_diagonal(C,0)
+    # C = np.sum(C,1)
     return C
 
 def funcSR(eiphi, sigma, a):
-    SR = np.zeros(len(sigma), dtype='complex128')
-    for i in range(len(sigma)):
-        SR[i] = eiphi[i]*int(sigma[i]==0.5)/(4.0*a)
+    # SR = np.zeros(len(sigma), dtype='complex128')
+    # for i in range(len(sigma)):
+    #     SR[i] = eiphi[i]*int(sigma[i]==0.5)/(4.0*a)
+    SR = eiphi*(sigma==0.5)/(4.0*a)
     return SR
-
-def funcr(z):
-    r = np.zeros((len(z), len(z)), dtype='complex128')
-    for i in range(len(z)):
-        for j in range(len(z)):
-            if i==j:
-                r[i,j] = a
-                continue
-            r[i,j] = np.abs(z[i]-z[j])
 
 def funcpsi(sigma,z):
     psi = np.power(z/np.conj(z), sigma)
@@ -33,46 +28,44 @@ def funceiphi(sigma, z, psi):
     eiphi = np.ones(len(z), dtype='complex128')
     for i in range(len(z)):
         for j in range(len(z)):
-            if i==j:
-                continue
-            eiphi[i]*= np.power((z[i]-z[j])/(np.conj(z[i])-np.conj(z[j])), sigma[j]) * np.exp(2*1j*psi[i])
+            if i!=j:
+                eiphi[i]*= np.power((z[i]-z[j])/(np.conj(z[i])-np.conj(z[j])), sigma[j]) * np.exp(2*1j*psi[i])
+    # z_ = np.conj(z)
+    # eiphi = np.power((np.outer(z,np.ones(z.shape)) - np.outer(np.ones(z.shape),z))/(np.outer(z_,np.ones(z_.shape)) - np.outer(np.ones(z_.shape),z_)), sigma)
+    # np.fill_diagonal(eiphi, 1)
+    # eiphi = np.prod(eiphi, axis=1)
+    # eiphi = np.multiply(eiphi, np.power(np.exp(2*1j*psi), len(psi)-1))
     return eiphi
 
 def funcq(sigma, z, eiphi):
     q = np.zeros((len(z), len(z)), dtype='complex128')
     for i in range(len(z)):
         for j in range(len(z)):
-            if i==j:
-                continue
-            q[i,j] = eiphi[i] * np.power((z[i]-z[j])/(np.conj(z[i])-np.conj(z[j])), sigma[i]-1)
+            if i!=j:
+                q[i,j] = eiphi[i] * np.power((z[i]-z[j])/(np.conj(z[i])-np.conj(z[j])), sigma[i]-1)
+    # z_ = np.conj(z)
+    # q = np.outer(eiphi,np.ones(eiphi.shape)) * np.power((np.outer(z,np.ones(z.shape)) - np.outer(np.ones(z.shape),z))/(np.outer(z_,np.ones(z_.shape)) - np.outer(np.ones(z_.shape),z_)), np.outer(sigma,np.ones(sigma.shape))-1)
+    # np.fill_diagonal(q,0)
     return q
 
 def funcAF(sigma, z, q):
     AF = np.zeros(len(z), dtype='complex128')
     for i in range(len(z)):
         for j in range(len(z)):
-            if i==j:
-                continue
-            AF[i] += sigma[i]*sigma[j]/(1.0-sigma[j]) * (np.conj(q[i,j])-np.power(-1, (sigma[i]+sigma[j]==1))*q[i,j])/(np.conj(z[i]) - np.conj(z[j]))
+            if i!=j:
+                AF[i] += sigma[i]*sigma[j]/(1.0-sigma[j]) * (np.conj(q[i,j])-np.power(-1, (sigma[i]+sigma[j]==1))*q[i,j])/(np.conj(z[i]) - np.conj(z[j]))
     return AF
-
-def funcL(sigma, z):
-    L = np.zeros(len(z), dtype='complex128')
-    for i in range(len(z)):
-        for j in range(1,len(z)):
-            if i==j:
-                continue
-            L[i]*= sigma[i]*sigma[j] * np.log
-    return L
 
 def funcB(sigma, z, L, a):
     B = np.zeros((len(z), len(z)), dtype='complex128')
     for i in range(len(z)):
         for j in range(len(z)):
-            if i==j:
-                B[i,j] = sigma[i]*sigma[j] * np.log(L/a)
+            if i!=j:
+                B[i,j] = sigma[i]*sigma[j] * np.log(L/np.abs(z[i]-z[j]))
                 continue
-            B[i,j] = sigma[i]*sigma[j] * np.log(L/np.abs(z[i]-z[j]))
+            B[i,j] = sigma[i]*sigma[j] * np.log(L/a)
+    # B = np.outer(sigma,sigma)*np.log(L/np.abs(np.outer(z,np.ones(z.shape)) - np.outer(np.ones(z.shape),z)))
+    # np.fill_diagonal(B,sigma*sigma*np.log(L/a))
     return B
 
 def random_defects(N, L):
