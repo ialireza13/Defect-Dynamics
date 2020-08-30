@@ -80,7 +80,11 @@ def dislocate(def_loc, delta, pos):
     dislocation[pos[0], pos[1]] = (np.random.random()-0.5) * 2.0*delta
     return def_loc + dislocation
 
-def get_trajectory(defects_loc, defects_charge, L, a, alpha, tMax, dt=0.01):
+def get_trajectory(args):
+    '''
+    defects_loc, defects_charge, L, a, alpha, tMax, dt = args
+    '''
+    defects_loc, defects_charge, L, a, alpha, tMax, dt = args
 
     times = np.arange(start=0, step=dt, stop=tMax)
     z = np.zeros((len(times), len(defects_charge)), dtype='complex128')
@@ -130,9 +134,13 @@ def get_trajectory(defects_loc, defects_charge, L, a, alpha, tMax, dt=0.01):
         X[:,d] = np.real(z[:,d])
         Y[:,d] = -np.imag(z[:,d])
     
-    return X, Y
+    return X, Y, times
 
-def get_fixedpoint(defects_loc, defects_charge, L, a, alpha, dt=0.01):
+def get_fixedpoint(args):
+    '''
+    defects_loc, defects_charge, L, a, alpha, dt
+    '''
+    defects_loc, defects_charge, L, a, alpha, dt = args
 
     z = np.zeros(len(defects_charge), dtype='complex128')
 
@@ -178,3 +186,43 @@ def get_fixedpoint(defects_loc, defects_charge, L, a, alpha, dt=0.01):
     Y[:] = -np.imag(z[:])
     
     return X, Y
+
+def get_first_collision(args):
+    '''
+    defects_loc, defects_charge, L, a, alpha, dt = args
+    '''
+    defects_loc, defects_charge, L, a, alpha, dt = args
+    z = np.zeros(len(defects_charge), dtype='complex128')
+
+    for d in range(len(defects_loc)):
+        z[d] = defects_loc[d][0]-defects_loc[d][1]*1j
+    
+    phis = np.zeros(len(defects_charge))
+    defects_loc = np.array(defects_loc)
+    defects_charge = np.array(defects_charge)
+    X = np.zeros(z.shape, dtype=float)
+    Y = np.zeros(z.shape, dtype=float)
+    t = 0
+    while(True):
+        t += dt
+        psis = funcpsi(defects_charge,z)
+        eiphis = funceiphi(defects_charge, z, psis)
+        qs = funcq(defects_charge, z, eiphis)
+        Cs = funcC(defects_charge, z)
+        SRs = funcSR(eiphis, defects_charge, a)
+        AFs = funcAF(defects_charge, z, qs)
+        A = 2.0*Cs + alpha*(SRs-0.5*AFs)
+        B = funcB(defects_charge, z, L, a)
+        zdot = np.linalg.solve(B,A)
+        phis = np.angle(eiphis)
+        z = z + zdot*dt
+        xs = np.real(z)
+        ys = -np.imag(z)
+        pos = np.array(list(zip(xs,ys)))
+        dists = cdist(pos,pos)
+        np.fill_diagonal(dists, 10.0*a)
+        where_dist = np.where(dists<a)
+        if len(where_dist[0])>0:
+            break
+    
+    return t
