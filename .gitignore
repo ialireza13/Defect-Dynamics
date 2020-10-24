@@ -3,3 +3,5 @@ workbook.ipynb
 *.npy
 pics
 results
+*.svg
+*.mp4
