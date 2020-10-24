@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import cdist
+from tqdm import tqdm
 
 def funcC(sigma, z):
     C = np.zeros(len(z), dtype='complex128')
@@ -88,6 +89,7 @@ def get_trajectory(args):
 
     times = np.arange(start=0, step=dt, stop=tMax)
     z = np.zeros((len(times), len(defects_charge)), dtype='complex128')
+    zdots = np.zeros((len(times), len(defects_charge)), dtype='complex128')
 
     for d in range(len(defects_loc)):
         z[0,d] = defects_loc[d][0]-defects_loc[d][1]*1j
@@ -95,8 +97,6 @@ def get_trajectory(args):
     phis = np.zeros((len(times), len(defects_charge)))
     defects_loc = np.array(defects_loc)
     defects_charge = np.array(defects_charge)
-    X = np.zeros(z.shape, dtype=float)
-    Y = np.zeros(z.shape, dtype=float)
     
     for t_idx in range(1,len(times)):
         psis = funcpsi(defects_charge,z[t_idx-1])
@@ -107,15 +107,16 @@ def get_trajectory(args):
         AFs = funcAF(defects_charge, z[t_idx-1], qs)
         A = 2.0*Cs + alpha*(SRs-0.5*AFs)
         B = funcB(defects_charge, z[t_idx-1], L, a)
-        zdot = np.linalg.solve(B,A)
+        zdots[t_idx] = np.linalg.solve(B,A)
         phis[t_idx-1,:] = np.angle(eiphis)
-        z[t_idx] = z[t_idx-1] + zdot*dt
+        z[t_idx] = z[t_idx-1] + zdots[t_idx]*dt
         xs = np.real(z[t_idx,:])
         ys = -np.imag(z[t_idx,:])
         pos = np.array(list(zip(xs,ys)))
         dists = cdist(pos,pos)
         np.fill_diagonal(dists, 10.0*a)
         where_dist = np.where(dists<a)
+    
         if len(where_dist[0])>0:
             defects_charge[where_dist[0]] = 0.0
             remaining_defs = np.where(defects_charge!=0.0)
@@ -126,15 +127,26 @@ def get_trajectory(args):
                 defects_loc_ = []
                 for d in remaining_defs[0]:
                     defects_loc_.append([np.real(z[t_idx,d]), -np.imag(z[t_idx,d])])
-                x,y = get_trajectory(defects_loc_, defects_charge[remaining_defs[0]], L, a, alpha, tMax-times[t_idx+1],dt)
-                z[t_idx+1:,remaining_defs[0]] = x[:,:]-y[:,:]*1j
+                x,y,vx,vy = get_trajectory((defects_loc_, defects_charge[remaining_defs[0]], L, a, alpha, tMax-times[t_idx],dt))[:4]
+                try:
+                    z[t_idx:,remaining_defs[0]] = x[:,:]-y[:,:]*1j
+                    zdots[t_idx:,remaining_defs[0]] = vx[:,:]-vy[:,:]*1j
+                except:
+                    z[t_idx:,remaining_defs[0]] = x[:-1,:]-y[:-1,:]*1j
+                    zdots[t_idx:,remaining_defs[0]] = vx[:-1,:]-vy[:-1,:]*1j
             break
-
+        
+    X = np.zeros(z.shape, dtype=float)
+    Y = np.zeros(z.shape, dtype=float)
+    Vx = np.zeros(z.shape, dtype=float)
+    Vy = np.zeros(z.shape, dtype=float)
     for d in range(z.shape[1]):
         X[:,d] = np.real(z[:,d])
         Y[:,d] = -np.imag(z[:,d])
-    
-    return X, Y, times
+        Vx[:,d] = np.real(zdots[:,d])
+        Vy[:,d] = -np.imag(zdots[:,d])
+
+    return X, Y, Vx, Vy, times
 
 def get_fixedpoint(args):
     '''
@@ -178,7 +190,7 @@ def get_fixedpoint(args):
                 defects_loc_ = []
                 for d in remaining_defs[0]:
                     defects_loc_.append([np.real(z[d]), -np.imag(z[d])])
-                x,y = get_fixedpoint(defects_loc_, defects_charge[remaining_defs[0]], L, a, alpha, dt)
+                x,y = get_fixedpoint((defects_loc_, defects_charge[remaining_defs[0]], L, a, alpha, dt))
                 z[remaining_defs[0]] = x[:]-y[:]*1j
             break
 
@@ -189,19 +201,16 @@ def get_fixedpoint(args):
 
 def get_first_collision(args):
     '''
-    defects_loc, defects_charge, L, a, alpha, dt = args
+    defects_loc, defects_charge, L, a, alpha, dt, alt_t = args
     '''
-    defects_loc, defects_charge, L, a, alpha, dt = args
+    defects_loc, defects_charge, L, a, alpha, dt, alt_t = args
     z = np.zeros(len(defects_charge), dtype='complex128')
 
     for d in range(len(defects_loc)):
         z[d] = defects_loc[d][0]-defects_loc[d][1]*1j
     
-    phis = np.zeros(len(defects_charge))
     defects_loc = np.array(defects_loc)
     defects_charge = np.array(defects_charge)
-    X = np.zeros(z.shape, dtype=float)
-    Y = np.zeros(z.shape, dtype=float)
     t = 0
     while(True):
         t += dt
@@ -222,7 +231,7 @@ def get_first_collision(args):
         dists = cdist(pos,pos)
         np.fill_diagonal(dists, 10.0*a)
         where_dist = np.where(dists<a)
-        if len(where_dist[0])>0:
+        if len(where_dist[0])>0 or t>alt_t:
             break
     
     return t
