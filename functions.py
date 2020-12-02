@@ -127,13 +127,15 @@ def get_trajectory(args):
                 defects_loc_ = []
                 for d in remaining_defs[0]:
                     defects_loc_.append([np.real(z[t_idx,d]), -np.imag(z[t_idx,d])])
-                x,y,vx,vy = get_trajectory((defects_loc_, defects_charge[remaining_defs[0]], L, a, alpha, tMax-times[t_idx],dt))[:4]
+                x,y,vx,vy,phiss = get_trajectory((defects_loc_, defects_charge[remaining_defs[0]], L, a, alpha, tMax-times[t_idx],dt))[:5]
                 try:
                     z[t_idx:,remaining_defs[0]] = x[:,:]-y[:,:]*1j
                     zdots[t_idx:,remaining_defs[0]] = vx[:,:]-vy[:,:]*1j
+                    phis[t_idx:,remaining_defs[0]] = phiss[:,:]
                 except:
                     z[t_idx:,remaining_defs[0]] = x[:-1,:]-y[:-1,:]*1j
                     zdots[t_idx:,remaining_defs[0]] = vx[:-1,:]-vy[:-1,:]*1j
+                    phis[t_idx:,remaining_defs[0]] = phiss[:-1,:]
             break
         
     X = np.zeros(z.shape, dtype=float)
@@ -146,7 +148,7 @@ def get_trajectory(args):
         Vx[:,d] = np.real(zdots[:,d])
         Vy[:,d] = -np.imag(zdots[:,d])
 
-    return X, Y, Vx, Vy, times
+    return X, Y, Vx, Vy, phis, times
 
 def get_fixedpoint(args):
     '''
